@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Form, Depends
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -20,23 +20,40 @@ STATIC_DIR = BASE_DIR / "frontend/static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-
 # Fake login session (to be replaced with real auth)
 def get_current_user(request: Request):
-    return "user"
-
+    return "user"  # Modify this to check actual user session
 
 # Login page
 @app.get("/", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
+# Handle POST request for login
+@app.post("/login")
+async def login(request: Request, username: str = Form(...), password: str = Form(...)):
+    # Here you can validate the credentials
+    # For now, assuming successful login
+    if username == "admin" and password == "password":  # Dummy check, replace with real validation
+        response = RedirectResponse(url="/dashboard")
+        response.set_cookie(key="user", value=username)  # Set a cookie or session for the user
+        return response
+    else:
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid credentials"})
 
 # Register page
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
     return templates.TemplateResponse("register.html", {"request": request})
 
+# Handle POST request for registration
+@app.post("/register")
+async def register(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    # Here you can create a new user in the database
+    new_user = Log(username=username, password=password)  # Replace with actual user model
+    db.add(new_user)
+    db.commit()
+    return templates.TemplateResponse("login.html", {"request": request, "message": "Account created! Please log in."})
 
 # Dashboard
 @app.get("/dashboard", response_class=HTMLResponse)
@@ -44,12 +61,10 @@ def dashboard(request: Request, db: Session = Depends(get_db), user: str = Depen
     logs = db.query(Log).order_by(Log.date.desc(), Log.time.desc()).all()
     return templates.TemplateResponse("dashboard.html", {"request": request, "logs": logs})
 
-
 # Download form page
 @app.get("/download", response_class=HTMLResponse)
 def download_page(request: Request, user: str = Depends(get_current_user)):
     return templates.TemplateResponse("download.html", {"request": request})
-
 
 # Handle Excel download
 @app.post("/download")
@@ -59,7 +74,6 @@ def download_logs(request: Request, start_date: str = Form(...), end_date: str =
         return FileResponse(filename, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename="logs.xlsx")
     except Exception as e:
         return templates.TemplateResponse("download.html", {"request": request, "error": str(e)})
-
 
 # Generate Excel from filtered logs
 def generate_excel_logs(start_date: str, end_date: str, db: Session) -> str:
