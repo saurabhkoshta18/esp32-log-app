@@ -20,23 +20,19 @@ STATIC_DIR = BASE_DIR / "frontend/static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-
 # Fake login session (to be replaced with real auth)
 def get_current_user(request: Request):
     return "user"
-
 
 # Login page
 @app.get("/", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-
 # Register page
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
     return templates.TemplateResponse("register.html", {"request": request})
-
 
 # Register user (POST request)
 @app.post("/register")
@@ -51,19 +47,16 @@ async def register(request: Request, username: str = Form(...), password: str = 
         db.rollback()
         return templates.TemplateResponse("register.html", {"request": request, "error": str(e)})
 
-
 # Dashboard
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     logs = db.query(Log).order_by(Log.date.desc(), Log.time.desc()).all()
     return templates.TemplateResponse("dashboard.html", {"request": request, "logs": logs})
 
-
 # Download form page
 @app.get("/download", response_class=HTMLResponse)
 def download_page(request: Request, user: str = Depends(get_current_user)):
     return templates.TemplateResponse("download.html", {"request": request})
-
 
 # Handle Excel download
 @app.post("/download")
@@ -73,7 +66,6 @@ def download_logs(request: Request, start_date: str = Form(...), end_date: str =
         return FileResponse(filename, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename="logs.xlsx")
     except Exception as e:
         return templates.TemplateResponse("download.html", {"request": request, "error": str(e)})
-
 
 # Generate Excel from filtered logs
 def generate_excel_logs(start_date: str, end_date: str, db: Session) -> str:
@@ -106,3 +98,29 @@ def generate_excel_logs(start_date: str, end_date: str, db: Session) -> str:
     output_file = BASE_DIR / "logs.xlsx"
     df.to_excel(output_file, index=False)
     return str(output_file)
+
+# Webhook endpoint to receive logs (POST request)
+@app.post("/api/logs")
+async def receive_log(request: Request, db: Session = Depends(get_db)):
+    try:
+        # Get JSON data from the incoming request
+        data = await request.json()
+        
+        # Process the incoming log data
+        uid = data.get('uid')
+        action = data.get('action')
+        date = data.get('date')
+        time = data.get('time')
+
+        if not (uid and action and date and time):
+            return {"error": "Missing data"}
+
+        # Save log into the database
+        new_log = Log(uid=uid, action=action, date=date, time=time)
+        db.add(new_log)
+        db.commit()
+        
+        # Return success response
+        return {"message": "Log received successfully"}
+    except Exception as e:
+        return {"error": str(e)}
