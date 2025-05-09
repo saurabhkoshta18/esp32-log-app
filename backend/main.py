@@ -1,4 +1,4 @@
-
+from pydantic import BaseModel
 from fastapi import FastAPI, Request, Depends, Form
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
@@ -16,6 +16,11 @@ import uvicorn
 import pandas as pd
 import os
 
+class LogInput(BaseModel):
+    UID: str
+    Action: str
+    Date: str
+    Time: str
 
 Base.metadata.create_all(bind=engine)
 
@@ -78,9 +83,13 @@ def download(request: Request, start_date: str = Form(...), end_date: str = Form
     return templates.TemplateResponse("download.html", {"request": request, "download_link": f"/static/{filename}"})
 
 @app.post("/api/logs")
-def receive_log(uid: str = Form(...), action: str = Form(...), db: Session = Depends(get_db)):
-    now = datetime.now()
-    log = Log(uid=uid, action=action, date=now.date().isoformat(), time=now.time().strftime("%H:%M:%S"))
-    db.add(log)
+def receive_log(log: LogInput, db: Session = Depends(get_db)):
+    new_log = Log(
+        uid=log.UID,
+        action=log.Action,
+        date=log.Date,
+        time=log.Time
+    )
+    db.add(new_log)
     db.commit()
     return {"status": "received"}
