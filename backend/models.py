@@ -1,4 +1,3 @@
-
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -21,3 +20,10 @@ class User(Base):
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String, unique=True)
     password = Column(String)
+
+# Create the tables in the database if they don't already exist
+def create_database():
+    Base.metadata.create_all(bind=engine)
+
+# Call this function to create the tables when the app starts (or manually)
+create_database()
