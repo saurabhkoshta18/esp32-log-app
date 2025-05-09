@@ -8,7 +8,9 @@ from datetime import datetime
 import pandas as pd
 
 from backend.database import get_db
-from backend.models import Log, User
+from backend.models import Log, User, create_database
+
+create_database()
 
 app = FastAPI()
 
