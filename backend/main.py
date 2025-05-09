@@ -1,95 +1,94 @@
-from pydantic import BaseModel
-from fastapi import FastAPI, Request, Depends, Form
-from fastapi.responses import HTMLResponse, RedirectResponse
-from fastapi.templating import Jinja2Templates
+from fastapi import FastAPI, Request, Form, Depends
+from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.middleware.cors import CORSMiddleware
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
-from backend import auth
-from backend.auth import get_user, create_user
-from backend import models
-from backend.models import Base, engine, Log, User
-from backend import database
-from backend.database import get_db
+from pathlib import Path
 from datetime import datetime
-import uvicorn
 import pandas as pd
-import os
 
-class LogInput(BaseModel):
-    UID: str
-    Action: str
-    Date: str
-    Time: str
-
-Base.metadata.create_all(bind=engine)
+from backend.database import get_db
+from backend.models import Log
 
 app = FastAPI()
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
 
-app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
-templates = Jinja2Templates(directory="frontend/templates")
+# Path setup
+BASE_DIR = Path(__file__).resolve().parent.parent
+TEMPLATES_DIR = BASE_DIR / "frontend/templates"
+STATIC_DIR = BASE_DIR / "frontend/static"
 
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
+
+
+# Fake login session (to be replaced with real auth)
+def get_current_user(request: Request):
+    return "user"
+
+
+# Login page
 @app.get("/", response_class=HTMLResponse)
-def login_form(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request, "message": ""})
+def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
 
-@app.post("/login", response_class=HTMLResponse)
-def login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    user = get_user(db, username, password)
-    if user:
-        response = RedirectResponse(url="/dashboard", status_code=302)
-        response.set_cookie("username", username)
-        return response
-    return templates.TemplateResponse("login.html", {"request": request, "message": "Invalid credentials"})
 
+# Register page
 @app.get("/register", response_class=HTMLResponse)
-def register_form(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request, "message": ""})
+def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
 
-@app.post("/register", response_class=HTMLResponse)
-def register(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
-    success = create_user(db, username, password)
-    if success:
-        return RedirectResponse(url="/", status_code=302)
-    return templates.TemplateResponse("register.html", {"request": request, "message": "User already exists"})
 
+# Dashboard
 @app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request, db: Session = Depends(get_db)):
-    logs = db.query(Log).order_by(Log.id.desc()).limit(50).all()
+def dashboard(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    logs = db.query(Log).order_by(Log.date.desc(), Log.time.desc()).all()
     return templates.TemplateResponse("dashboard.html", {"request": request, "logs": logs})
 
+
+# Download form page
 @app.get("/download", response_class=HTMLResponse)
-def download_page(request: Request):
+def download_page(request: Request, user: str = Depends(get_current_user)):
     return templates.TemplateResponse("download.html", {"request": request})
 
-@app.post("/download", response_class=HTMLResponse)
-def download(request: Request, start_date: str = Form(...), end_date: str = Form(...), db: Session = Depends(get_db)):
-    logs = db.query(Log).filter(Log.date >= start_date, Log.date <= end_date).all()
-    filename = "logs.xlsx"
+
+# Handle Excel download
+@app.post("/download")
+def download_logs(request: Request, start_date: str = Form(...), end_date: str = Form(...), db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+    try:
+        filename = generate_excel_logs(start_date, end_date, db)
+        return FileResponse(filename, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", filename="logs.xlsx")
+    except Exception as e:
+        return templates.TemplateResponse("download.html", {"request": request, "error": str(e)})
+
+
+# Generate Excel from filtered logs
+def generate_excel_logs(start_date: str, end_date: str, db: Session) -> str:
+    # Convert to comparable format
+    try:
+        start = datetime.strptime(start_date, "%Y-%m-%d").date()
+        end = datetime.strptime(end_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise ValueError("Dates must be in YYYY-MM-DD format")
+
+    # Load all logs and filter in Python
+    all_logs = db.query(Log).all()
+    filtered = []
+    for log in all_logs:
+        try:
+            log_date = datetime.strptime(log.date, "%Y-%m-%d").date()
+            if start <= log_date <= end:
+                filtered.append(log)
+        except ValueError:
+            continue  # Skip malformed dates
+
+    # Convert to DataFrame
     df = pd.DataFrame([{
         "UID": log.uid,
         "Action": log.action,
         "Date": log.date,
         "Time": log.time
-    } for log in logs])
-    df.to_excel(filename, index=False)
-    return templates.TemplateResponse("download.html", {"request": request, "download_link": f"/static/{filename}"})
+    } for log in filtered])
 
-@app.post("/api/logs")
-def receive_log(log: LogInput, db: Session = Depends(get_db)):
-    new_log = Log(
-        uid=log.UID,
-        action=log.Action,
-        date=log.Date,
-        time=log.Time
-    )
-    db.add(new_log)
-    db.commit()
-    return {"status": "received"}
+    output_file = BASE_DIR / "logs.xlsx"
+    df.to_excel(output_file, index=False)
+    return str(output_file)
