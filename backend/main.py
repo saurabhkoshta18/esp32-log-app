@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request, Form, Depends
-from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -22,14 +22,24 @@ templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 # Fake login session (to be replaced with real auth)
 def get_current_user(request: Request):
-    return "user"
+    return "user"  # Just a placeholder for now
 
-# Login page
+# Login page (GET request)
 @app.get("/", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-# Register page
+# Login handler (POST request)
+@app.post("/login")
+async def login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    # Fake user authentication (replace with real logic)
+    user = db.query(User).filter(User.username == username, User.password == password).first()
+    if user:
+        return RedirectResponse(url="/dashboard", status_code=303)  # Redirect to dashboard if login is successful
+    else:
+        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid username or password"})
+
+# Register page (GET request)
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
     return templates.TemplateResponse("register.html", {"request": request})
@@ -47,18 +57,18 @@ async def register(request: Request, username: str = Form(...), password: str = 
         db.rollback()
         return templates.TemplateResponse("register.html", {"request": request, "error": str(e)})
 
-# Dashboard
+# Dashboard (GET request)
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     logs = db.query(Log).order_by(Log.date.desc(), Log.time.desc()).all()
     return templates.TemplateResponse("dashboard.html", {"request": request, "logs": logs})
 
-# Download form page
+# Download form page (GET request)
 @app.get("/download", response_class=HTMLResponse)
 def download_page(request: Request, user: str = Depends(get_current_user)):
     return templates.TemplateResponse("download.html", {"request": request})
 
-# Handle Excel download
+# Handle Excel download (POST request)
 @app.post("/download")
 def download_logs(request: Request, start_date: str = Form(...), end_date: str = Form(...), db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     try:
@@ -105,7 +115,7 @@ async def receive_log(request: Request, db: Session = Depends(get_db)):
     try:
         # Get JSON data from the incoming request
         data = await request.json()
-        
+
         # Process the incoming log data
         uid = data.get('uid')
         action = data.get('action')
@@ -119,7 +129,7 @@ async def receive_log(request: Request, db: Session = Depends(get_db)):
         new_log = Log(uid=uid, action=action, date=date, time=time)
         db.add(new_log)
         db.commit()
-        
+
         # Return success response
         return {"message": "Log received successfully"}
     except Exception as e:
