@@ -1,9 +1,14 @@
 from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+import os
 
-DATABASE_URL = "postgresql://esp32logs_user:MCnzmWkm1M8jtVWPw3SQd5AHhyP0wr0E@dpg-d0gff5q4d50c73fq54c0-a.oregon-postgres.render.com/esp32logs"
-engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
+# Use Render's PostgreSQL connection string
+DATABASE_URL = os.getenv("postgresql://esp32logs_user:MCnzmWkm1M8jtVWPw3SQd5AHhyP0wr0E@dpg-d0gff5q4d50c73fq54c0-a.oregon-postgres.render.com/esp32logs")  # This should be set in Render's environment
+
+# DO NOT use 'check_same_thread' for PostgreSQL
+engine = create_engine(DATABASE_URL)
+
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
@@ -21,9 +26,5 @@ class User(Base):
     username = Column(String, unique=True)
     password = Column(String)
 
-# Create the tables in the database if they don't already exist
 def create_database():
     Base.metadata.create_all(bind=engine)
-
-# Call this function to create the tables when the app starts (or manually)
-create_database()
