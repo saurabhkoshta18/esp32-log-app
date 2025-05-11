@@ -1,30 +1,19 @@
-from sqlalchemy import Column, Integer, String, create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-import os
-
-# Use Render's PostgreSQL connection string
-DATABASE_URL = os.getenv("DATABASE_URL")  # This should be set in Render's environment
-
-# DO NOT use 'check_same_thread' for PostgreSQL
-engine = create_engine(DATABASE_URL)
-
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
+from sqlalchemy import Column, Integer, String, Date, Time
+from database import Base
 
 class Log(Base):
     __tablename__ = "logs"
     id = Column(Integer, primary_key=True, index=True)
-    uid = Column(String)
+    uid = Column(String, index=True)
     action = Column(String)
     date = Column(String)
     time = Column(String)
 
+    def as_dict(self):
+        return {"UID": self.uid, "Action": self.action, "Date": self.date, "Time": self.time}
+
 class User(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True)
-    password = Column(String)
-
-def create_database():
-    Base.metadata.create_all(bind=engine)
+    username = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
