@@ -9,3 +9,4 @@ psycopg2-binary
 openpyxl
 python-dotenv
 pandas
+python-jose[cryptography]
