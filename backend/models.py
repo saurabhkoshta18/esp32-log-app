@@ -2,7 +2,7 @@ from sqlalchemy import Column, Integer, String, create_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-DATABASE_URL = "sqlite:///./logs.db"
+DATABASE_URL = "postgresql://esp32logs_user:MCnzmWkm1M8jtVWPw3SQd5AHhyP0wr0E@dpg-d0gff5q4d50c73fq54c0-a.oregon-postgres.render.com/esp32logs"
 engine = create_engine(DATABASE_URL, connect_args={"check_same_thread": False})
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
