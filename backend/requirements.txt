@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+jinja2
+python-multipart
+passlib[bcrypt]
+jwt
+sqlalchemy
+psycopg2-binary
+openpyxl
+python-dotenv
