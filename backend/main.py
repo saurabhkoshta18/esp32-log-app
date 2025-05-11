@@ -59,6 +59,21 @@ async def register(request: Request, username: str = Form(...), password: str = 
         db.rollback()
         return templates.TemplateResponse("register.html", {"request": request, "error": str(e)})
 
+from fastapi.responses import JSONResponse
+
+@app.get("/api/logs")
+def get_logs(db: Session = Depends(get_db)):
+    logs = db.query(Log).order_by(Log.date.desc(), Log.time.desc()).all()
+    return JSONResponse(content=[
+        {
+            "uid": log.uid,
+            "action": log.action,
+            "date": log.date,
+            "time": log.time
+        }
+        for log in logs
+    ])
+
 # Dashboard (GET request)
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
