@@ -1,14 +1,23 @@
+from datetime import datetime, timedelta
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+import os
+from dotenv import load_dotenv
 
-from sqlalchemy.orm import Session
-from backend.models import User
+load_dotenv()
 
+SECRET_KEY = os.getenv("SECRET_KEY")
+ALGORITHM = os.getenv("ALGORITHM")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))
 
-def get_user(db: Session, username: str, password: str):
-    return db.query(User).filter(User.username == username, User.password == password).first()
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def create_user(db: Session, username: str, password: str):
-    if db.query(User).filter(User.username == username).first():
-        return False
-    db.add(User(username=username, password=password))
-    db.commit()
-    return True
+def verify_password(plain_password, hashed_password):
+    return pwd_context.verify(plain_password, hashed_password)
+
+def create_access_token(data: dict):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
