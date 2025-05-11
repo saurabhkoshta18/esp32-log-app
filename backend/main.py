@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import engine, SessionLocal
+from .database import engine, SessionLocal
 from datetime import datetime
 import io
 import os
