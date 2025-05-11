@@ -22,30 +22,27 @@ STATIC_DIR = BASE_DIR / "frontend/static"
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
-# Fake login session (to be replaced with real auth)
+# Fake session
 def get_current_user(request: Request):
-    return "user"  # Just a placeholder for now
+    return "user"  # Placeholder
 
-# Login page (GET request)
+# Home - Login
 @app.get("/", response_class=HTMLResponse)
 def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
-# Login handler (POST request)
 @app.post("/login")
 async def login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == username, User.password == password).first()
     if user:
         return RedirectResponse(url="/dashboard", status_code=303)
-    else:
-        return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid username or password"})
+    return templates.TemplateResponse("login.html", {"request": request, "error": "Invalid username or password"})
 
-# Register page (GET request)
+# Register
 @app.get("/register", response_class=HTMLResponse)
 def register_page(request: Request):
     return templates.TemplateResponse("register.html", {"request": request})
 
-# Register user (POST request)
 @app.post("/register")
 async def register(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
     try:
@@ -57,12 +54,12 @@ async def register(request: Request, username: str = Form(...), password: str = 
         db.rollback()
         return templates.TemplateResponse("register.html", {"request": request, "error": str(e)})
 
-# Dashboard (GET request)
+# Dashboard
 @app.get("/dashboard", response_class=HTMLResponse)
-def dashboard(request: Request, db: Session = Depends(get_db), user: str = Depends(get_current_user)):
+def dashboard(request: Request, user: str = Depends(get_current_user)):
     return templates.TemplateResponse("dashboard.html", {"request": request})
 
-# JSON logs for frontend auto-refresh
+# Logs for dashboard refresh (AJAX)
 @app.get("/api/logs")
 def get_logs(db: Session = Depends(get_db)):
     logs = db.query(Log).order_by(Log.date.desc(), Log.time.desc()).all()
@@ -76,12 +73,12 @@ def get_logs(db: Session = Depends(get_db)):
         for log in logs
     ])
 
-# Download form page (GET request)
+# Download logs page
 @app.get("/download", response_class=HTMLResponse)
 def download_page(request: Request, user: str = Depends(get_current_user)):
     return templates.TemplateResponse("download.html", {"request": request})
 
-# Handle Excel download (POST request)
+# Handle download
 @app.post("/download")
 def download_logs(request: Request, start_date: str = Form(...), end_date: str = Form(...), db: Session = Depends(get_db), user: str = Depends(get_current_user)):
     try:
@@ -90,7 +87,7 @@ def download_logs(request: Request, start_date: str = Form(...), end_date: str =
     except Exception as e:
         return templates.TemplateResponse("download.html", {"request": request, "error": str(e)})
 
-# Generate Excel from filtered logs
+# Generate Excel file
 def generate_excel_logs(start_date: str, end_date: str, db: Session) -> str:
     try:
         start = datetime.strptime(start_date, "%Y-%m-%d").date()
@@ -119,7 +116,7 @@ def generate_excel_logs(start_date: str, end_date: str, db: Session) -> str:
     df.to_excel(output_file, index=False)
     return str(output_file)
 
-# Webhook endpoint to receive logs (POST request)
+# Webhook from IoT device
 @app.post("/api/logs")
 async def receive_log(request: Request, db: Session = Depends(get_db)):
     try:
