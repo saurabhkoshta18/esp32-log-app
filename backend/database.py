@@ -1,7 +1,15 @@
-import pandas as pd
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+import os
+from dotenv import load_dotenv
 
-def export_logs_to_excel(logs):
-    data = [{"UID": log.uid, "Action": log.action, "Date": log.date, "Time": log.time} for log in logs]
-    df = pd.DataFrame(data)
-    output = df.to_excel(index=False, engine='openpyxl')
-    return output
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
+
