@@ -11,3 +11,4 @@ python-dotenv
 pydantic
 psycopg2
 pandas
+python-jose[cryptography]
