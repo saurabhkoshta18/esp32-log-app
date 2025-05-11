@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 import os
 
 # Use Render's PostgreSQL connection string
-DATABASE_URL = os.getenv("postgresql://esp32logs_user:MCnzmWkm1M8jtVWPw3SQd5AHhyP0wr0E@dpg-d0gff5q4d50c73fq54c0-a.oregon-postgres.render.com/esp32logs")  # This should be set in Render's environment
+DATABASE_URL = os.getenv("DATABASE_URL")  # This should be set in Render's environment
 
 # DO NOT use 'check_same_thread' for PostgreSQL
 engine = create_engine(DATABASE_URL)
