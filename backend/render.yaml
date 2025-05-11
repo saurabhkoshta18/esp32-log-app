@@ -1,0 +1,25 @@
+services:
+  - type: web
+    name: esp32-log-app
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn backend.main:app --host 0.0.0.0 --port 10000
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: esp32logs
+          property: connectionString
+      - key: SECRET_KEY
+        value: Mastitime@18
+      - key: ALGORITHM
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "30"
+    autoDeploy: true
+
+databases:
+  - name: esp32logs
+    region: oregon
+    plan: free
