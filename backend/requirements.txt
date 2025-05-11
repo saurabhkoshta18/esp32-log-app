@@ -8,3 +8,6 @@ sqlalchemy
 psycopg2-binary
 openpyxl
 python-dotenv
+pydantic
+psycopg2
+pandas
