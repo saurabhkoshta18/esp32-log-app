@@ -1,10 +1,10 @@
 fastapi
 uvicorn
-python-multipart
-sqlalchemy
-openpyxl
-pydantic
-passlib[bcrypt]
-pandas
 jinja2
-psycopg2
+python-multipart
+passlib[bcrypt]
+jwt
+sqlalchemy
+psycopg2-binary
+openpyxl
+python-dotenv
