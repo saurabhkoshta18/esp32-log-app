@@ -7,3 +7,4 @@ pydantic
 passlib[bcrypt]
 pandas
 jinja2
+psycopg2
