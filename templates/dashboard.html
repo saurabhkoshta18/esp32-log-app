@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Dashboard</h2>
+<table>
+    <tr>
+        <th>UID</th>
+        <th>Action</th>
+        <th>Date</th>
+        <th>Time</th>
+    </tr>
+    {% for log in logs %}
+    <tr>
+        <td>{{ log.uid }}</td>
+        <td>{{ log.action }}</td>
+        <td>{{ log.timestamp.strftime('%Y-%m-%d') }}</td>
+        <td>{{ log.timestamp.strftime('%H:%M:%S') }}</td>
+    </tr>
+    {% endfor %}
+</table>
+<script>
+    setTimeout(function(){
+       window.location.reload(1);
+    }, 5000);
+</script>
+{% endblock %}
