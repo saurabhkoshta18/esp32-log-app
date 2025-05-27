@@ -1,4 +1,4 @@
-from flask import Flask, render_template, redirect, url_for, request, flash, send_file
+from flask import Flask, render_template, redirect, url_for, request, flash, send_file, jsonify
 from extensions import db, login_manager
 from flask_login import login_user, login_required, logout_user, current_user
 from models import User, Log
@@ -6,7 +6,6 @@ from forms import LoginForm, RegisterForm
 from datetime import datetime
 import io
 import csv
-import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'Mastitime@18'  # Replace with a secure key
@@ -83,8 +82,29 @@ def download():
 def logout():
     logout_user()
     return redirect(url_for('login'))
-with app.app_context():
-    db.create_all()
+
+# =============================
+#         ESP32 Webhook
+# =============================
+
+@app.route('/log', methods=['POST'])
+def receive_log():
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data received'}), 400
+
+    uid = data.get('uid')
+    action = data.get('action')
+
+    if not uid or not action:
+        return jsonify({'error': 'Missing uid or action'}), 400
+
+    new_log = Log(uid=uid, action=action, timestamp=datetime.utcnow())
+    db.session.add(new_log)
+    db.session.commit()
+
+    return jsonify({'message': 'Log received successfully'}), 200
+
 # =============================
 # Run (For local testing only)
 # =============================
@@ -93,4 +113,3 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Creates tables if not exist
     app.run(debug=True)
-
