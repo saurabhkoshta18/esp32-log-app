@@ -83,7 +83,9 @@ def download():
 def logout():
     logout_user()
     return redirect(url_for('login'))
-
+@app.before_first_request
+def create_tables():
+    db.create_all()
 # =============================
 # Run (For local testing only)
 # =============================
