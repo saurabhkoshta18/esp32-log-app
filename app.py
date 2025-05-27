@@ -61,20 +61,55 @@ def dashboard():
     logs = Log.query.order_by(Log.timestamp.desc()).limit(100).all()
     return render_template('dashboard.html', logs=logs)
 
+
+
 @app.route('/download', methods=['GET', 'POST'])
 @login_required
 def download():
     if request.method == 'POST':
-        start_date = request.form.get('start_date')
-        end_date = request.form.get('end_date')
+        start_date_str = request.form.get('start_date')
+        end_date_str = request.form.get('end_date')
+
+        if not start_date_str or not end_date_str:
+            flash('Please provide both start and end dates.')
+            return redirect(url_for('download'))
+
+        # Convert string to datetime
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
+            # include the whole end day
+            end_date = end_date.replace(hour=23, minute=59, second=59)
+        except ValueError:
+            flash('Invalid date format. Use YYYY-MM-DD.')
+            return redirect(url_for('download'))
+
+        # Query logs between those datetime objects
         logs = Log.query.filter(Log.timestamp.between(start_date, end_date)).order_by(Log.timestamp.desc()).all()
+
+        if not logs:
+            flash('No logs found for the selected date range.')
+            return redirect(url_for('download'))
+
+        # Create CSV
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(['UID', 'Action', 'Date', 'Time'])
         for log in logs:
-            writer.writerow([log.uid, log.action, log.timestamp.strftime('%Y-%m-%d'), log.timestamp.strftime('%H:%M:%S')])
+            writer.writerow([
+                log.uid,
+                log.action,
+                log.timestamp.strftime('%Y-%m-%d'),
+                log.timestamp.strftime('%H:%M:%S')
+            ])
         output.seek(0)
-        return send_file(io.BytesIO(output.read().encode()), mimetype='text/csv', as_attachment=True, download_name='logs.csv')
+        return send_file(
+            io.BytesIO(output.read().encode()),
+            mimetype='text/csv',
+            as_attachment=True,
+            download_name='logs.csv'
+        )
+
     return render_template('download.html')
 
 @app.route('/logout')
