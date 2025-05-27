@@ -93,18 +93,25 @@ def receive_log():
     if not data:
         return jsonify({'error': 'No data received'}), 400
 
-    uid = data.get('uid')
-    action = data.get('action')
+    uid = data.get('UID')
+    action = data.get('Action')
+    date_str = data.get('Date')
+    time_str = data.get('Time')
 
-    if not uid or not action:
-        return jsonify({'error': 'Missing uid or action'}), 400
+    if not uid or not action or not date_str or not time_str:
+        return jsonify({'error': 'Missing UID, Action, Date, or Time'}), 400
 
-    new_log = Log(uid=uid, action=action, timestamp=datetime.utcnow())
+    # Combine date and time into a datetime object
+    try:
+        timestamp = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S")
+    except ValueError:
+        return jsonify({'error': 'Invalid date or time format'}), 400
+
+    new_log = Log(uid=uid, action=action, timestamp=timestamp)
     db.session.add(new_log)
     db.session.commit()
 
     return jsonify({'message': 'Log received successfully'}), 200
-
 # =============================
 # Run (For local testing only)
 # =============================
