@@ -6,10 +6,11 @@ from forms import LoginForm, RegisterForm
 from datetime import datetime
 import io
 import csv
+import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'Mastitime@18'  # Replace with a secure key
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///app.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
