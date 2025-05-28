@@ -1,5 +1,5 @@
 from flask import Flask, render_template, redirect, url_for, request, flash, send_file, jsonify
-from extensions import db, login_manager
+from extensions import db, login_manager, migrate
 from flask_login import login_user, login_required, logout_user, current_user
 from models import User, Log
 from forms import LoginForm, RegisterForm
@@ -9,12 +9,15 @@ import csv
 import os
 
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'Mastitime@18'  # Replace with a secure key
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+app.config['SECRET_KEY'] = 'Mastitime@18'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')  # From Render
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+# Initialize extensions
 db.init_app(app)
 login_manager.init_app(app)
+migrate.init_app(app, db)  # Now safe to use
+
 login_manager.login_view = 'login'
 
 @login_manager.user_loader
@@ -62,8 +65,6 @@ def dashboard():
     logs = Log.query.order_by(Log.timestamp.desc()).limit(100).all()
     return render_template('dashboard.html', logs=logs)
 
-
-
 @app.route('/download', methods=['GET', 'POST'])
 @login_required
 def download():
@@ -75,24 +76,20 @@ def download():
             flash('Please provide both start and end dates.')
             return redirect(url_for('download'))
 
-        # Convert string to datetime
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d')
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d')
-            # include the whole end day
             end_date = end_date.replace(hour=23, minute=59, second=59)
         except ValueError:
             flash('Invalid date format. Use YYYY-MM-DD.')
             return redirect(url_for('download'))
 
-        # Query logs between those datetime objects
         logs = Log.query.filter(Log.timestamp.between(start_date, end_date)).order_by(Log.timestamp.desc()).all()
 
         if not logs:
             flash('No logs found for the selected date range.')
             return redirect(url_for('download'))
 
-        # Create CSV
         output = io.StringIO()
         writer = csv.writer(output)
         writer.writerow(['UID', 'Action', 'Date', 'Time'])
@@ -137,7 +134,6 @@ def receive_log():
     if not uid or not action or not date_str or not time_str:
         return jsonify({'error': 'Missing UID, Action, Date, or Time'}), 400
 
-    # Combine date and time into a datetime object
     try:
         timestamp = datetime.strptime(f"{date_str} {time_str}", "%Y-%m-%d %H:%M:%S")
     except ValueError:
@@ -148,12 +144,12 @@ def receive_log():
     db.session.commit()
 
     return jsonify({'message': 'Log received successfully'}), 200
-# =============================
-# Run (For local testing only)
-# =============================
 
-with app.app_context():
-    db.create_all()
+# =============================
+# Run (Local only)
+# =============================
 
 if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
     app.run(debug=True)
