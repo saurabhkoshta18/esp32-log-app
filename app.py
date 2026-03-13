@@ -6,6 +6,7 @@ from forms import LoginForm, RegisterForm
 from datetime import datetime
 import io
 import csv
+import os
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY')  # Replace with a secure key
