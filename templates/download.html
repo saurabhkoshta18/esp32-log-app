@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Download Logs</h2>
+<form method="post">
+    Start Date: <input type="date" name="start_date" required><br>
+    End Date: <input type="date" name="end_date" required><br>
+    <input type="submit" value="Download">
+</form>
+{% endblock %}
